@@ -1,8 +1,6 @@
-
-jQuery(document).ready(function() {
+(function ($) {
     "use strict";
 
-    var $ = jQuery;
     var options = {
         auto:       true
     ,   debug:      false
@@ -31,33 +29,36 @@ jQuery(document).ready(function() {
     });
     if (options.debug) console.log("[BrowserID] Options: ", options);
     var $win = $(window);
-    $(options.selector).click(function () {
-        $win.trigger("login-attempt");
-        navigator.id.get(function (assertion) {
-            $win.trigger("login-response", assertion);
-            if (assertion) {
-                $win.trigger("received-assertion", assertion);
-                var data = { audience: options.audience, assertion: assertion };
-                if (options.csrf) data._csrf = options.csrf;
-                $.post(
-                        options.verifier
-                    ,   data
-                    ,   function (data) {
-                            if (!data) $win.trigger("login-error", "no verify data");
-                            if ("okay" === data.status) {
-                                $win.trigger("login-success", data);
+    $(document).ready(function () {
+        $(options.selector).click(function () {
+            $win.trigger("login-attempt");
+            navigator.id.getVerifiedEmail(function(assertion) {
+                $win.trigger("login-response", assertion);
+                if (assertion) {
+                    $win.trigger("received-assertion", assertion);
+                    var data = { audience: options.audience, assertion: assertion };
+                    if (options.csrf) data._csrf = options.csrf;
+                    $.post(
+                            options.verifier
+                        ,   data
+                        ,   function (data) {
+                                if (!data) $win.trigger("login-error", "no verify data");
+                                if ("okay" === data.status) {
+                                    $win.trigger("login-success", data);
+                                }
+                                else {
+                                    $win.trigger("login-error", ["verify error", data]);
+                                }
                             }
-                            else {
-                                $win.trigger("login-error", ["verify error", data]);
-                            }
-                        }
-                ), "json";
-            }
-            else {
-                $win.trigger("login-error", "browserid error");
-            }
+                    ), "json";
+                }
+                else {
+                    $win.trigger("login-error", "browserid error");
+                }
+            });
         });
     });
+    
     if (options.debug) {
         $win.on("login-attempt", function () {
             console.log("[BrowserID] attempting to log in");
@@ -69,10 +70,15 @@ jQuery(document).ready(function() {
             console.log("[BrowserID] assertion received: " + ass);
         });
         $win.on("login-error", function (ev, type, data) {
+            // alert("[BrowserID] error: " + type + "\n" + data.serverResponse);
             console.log("[BrowserID] error: " + type, data);
         });
         $win.on("login-success", function (ev, data) {
             console.log("[BrowserID] success!", data);
+        });
+    } else {
+        $win.on("login-error", function (ev, type, data) {
+            // alert("[BrowserID] error: " + type + "\n" + data.serverResponse);
         });
     }
     if (options.auto) {
@@ -80,4 +86,4 @@ jQuery(document).ready(function() {
             location.reload();
         });
     }
-});
+})(jQuery);
